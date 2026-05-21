@@ -65,16 +65,6 @@ Se você abrir o arquivo `index.html` diretamente no navegador dando um duplo cl
 
 ---
 
-## 🌐 Hospedagem no GitHub Pages
-
-O projeto já está configurado para carregamento automático em servidores de hospedagem estática como o **GitHub Pages**:
-
-1. Crie um repositório público no GitHub.
-2. Faça o upload dos arquivos `index.html` e `transfers.csv` no diretório raiz (`/`).
-3. Vá em **Settings** > **Pages** no seu repositório no GitHub.
-4. Selecione a branch `main` e a pasta `/ (root)` e clique em **Save**.
-5. Em poucos instantes, o GitHub Pages fornecerá o link público e os dados serão carregados automaticamente ao carregar a página.
-
 > [!TIP]
 > Embora o arquivo `transfers.csv` possua cerca de 14.7 MB em disco, servidores modernos como o GitHub Pages o transmitem utilizando compressão (Gzip/Brotli), o que reduz o download inicial para menos de 3.5 MB, tornando o carregamento do painel extremamente rápido.
 
