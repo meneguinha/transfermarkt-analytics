@@ -1,0 +1,2285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transfermarkt Analytics - Painel de Transferências</title>
+  
+  <!-- Fontes Modernas -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Icones FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Biblioteca PapaParse CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #f8fafc; /* Fundo cinza-azul claro */
+      --panel-bg: rgba(255, 255, 255, 0.85); /* Painel branco translúcido */
+      --card-bg: #ffffff; /* Card branco */
+      --border-color: rgba(148, 163, 184, 0.15); /* Bordas cinza-claro */
+      --text-primary: #0f172a; /* Texto grafite escuro */
+      --text-secondary: #475569; /* Texto cinza secundário */
+      
+      /* Cores de status */
+      --color-primary: #059669; /* Verde esmeralda rico */
+      --color-primary-glow: rgba(5, 150, 105, 0.06);
+      --color-danger: #e11d48; /* Vermelho rubi */
+      --color-danger-glow: rgba(225, 29, 72, 0.06);
+      --color-info: #2563eb; /* Azul corporativo */
+      --color-warning: #d97706; /* Âmbar */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 5% 10%, rgba(5, 150, 105, 0.04) 0%, transparent 35%),
+        radial-gradient(circle at 95% 80%, rgba(37, 99, 235, 0.03) 0%, transparent 40%);
+      background-attachment: fixed;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* Overlay de Carregamento */
+    .loader-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+    
+    .loader-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loader-spinner {
+      position: relative;
+      width: 70px;
+      height: 70px;
+      margin-bottom: 24px;
+    }
+    
+    .spinner-ring {
+      width: 100%;
+      height: 100%;
+      border: 4px solid rgba(5, 150, 105, 0.1);
+      border-top: 4px solid var(--color-primary);
+      border-radius: 50%;
+      animation: spin 1s cubic-bezier(0.55, 0.055, 0.675, 0.19) infinite;
+    }
+    
+    .spinner-ball {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.8rem;
+      color: var(--color-primary);
+      text-shadow: 0 0 10px rgba(5, 150, 105, 0.3);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.8; }
+      50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+    }
+
+    .loader-text {
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+      color: #0f172a;
+    }
+
+    .loader-status {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      max-width: 320px;
+      text-align: center;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header-title-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-container {
+      width: 48px;
+      height: 48px;
+      background: var(--color-primary-glow);
+      border: 1px solid rgba(5, 150, 105, 0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: var(--color-primary);
+      box-shadow: 0 2px 10px rgba(5, 150, 105, 0.05);
+    }
+
+    .header-text h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #0f172a;
+    }
+
+    .header-text p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .dataset-badge {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    
+    .dataset-badge i {
+      color: var(--color-primary);
+    }
+
+    /* Dashboard Wrapper */
+    .dashboard-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Card de Filtros */
+    .filters-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
+      position: relative;
+      z-index: 10;
+    }
+
+    .filters-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, 1.2fr) minmax(220px, 1fr) minmax(220px, 0.8fr);
+      gap: 24px;
+      align-items: end;
+    }
+
+    @media (max-width: 900px) {
+      .filters-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+    }
+
+    .filter-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .filter-item label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .filter-item label i {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* Inputs e Controles */
+    .form-input, .form-select {
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text-primary);
+      width: 100%;
+      outline: none;
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+    }
+
+    /* Autocomplete Combobox */
+    .autocomplete-container {
+      position: relative;
+      width: 100%;
+    }
+
+    .autocomplete-container .search-input-icon {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      pointer-events: none;
+    }
+
+    .autocomplete-container .clear-input-icon {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+      transition: color 0.2s, background-color 0.2s;
+    }
+
+    .autocomplete-container .clear-input-icon:hover {
+      color: var(--text-primary);
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .autocomplete-results {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+    }
+    
+    .autocomplete-header {
+      padding: 10px 16px 6px 16px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+      background: rgba(5, 150, 105, 0.02);
+    }
+
+    .autocomplete-item {
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      transition: background 0.2s, color 0.2s;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.02);
+    }
+
+    .autocomplete-item:hover, .autocomplete-item.active {
+      background: rgba(5, 150, 105, 0.08);
+      color: var(--color-primary);
+    }
+
+    .autocomplete-item-more {
+      padding: 8px 16px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-align: center;
+      background: rgba(0, 0, 0, 0.02);
+      border-top: 1px solid rgba(0, 0, 0, 0.02);
+    }
+
+    .autocomplete-item.no-results {
+      color: var(--text-secondary);
+      font-style: italic;
+      text-align: center;
+      padding: 16px;
+      background: transparent;
+      cursor: default;
+    }
+
+    /* Dual range slider */
+    .dual-slider-container {
+      width: 100%;
+      padding-bottom: 4px;
+    }
+
+    .dual-slider {
+      position: relative;
+      width: 100%;
+      height: 6px;
+      margin: 16px 0 10px 0;
+    }
+
+    .slider-track {
+      position: absolute;
+      height: 100%;
+      width: 100%;
+      background: #e2e8f0;
+      border-radius: 4px;
+      z-index: 1;
+    }
+
+    .slider-range {
+      position: absolute;
+      height: 100%;
+      background: var(--color-primary);
+      border-radius: 4px;
+      z-index: 2;
+    }
+
+    .dual-slider input[type="range"] {
+      position: absolute;
+      width: 100%;
+      height: 6px;
+      background: none;
+      pointer-events: none;
+      -webkit-appearance: none;
+      z-index: 3;
+      margin: 0;
+      top: 0;
+    }
+
+    /* Styling the thumbs */
+    .dual-slider input[type="range"]::-webkit-slider-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid var(--color-primary);
+      cursor: pointer;
+      pointer-events: auto;
+      -webkit-appearance: none;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+      transition: transform 0.15s, background-color 0.15s;
+    }
+
+    .dual-slider input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+      background: var(--color-primary);
+    }
+
+    .dual-slider input[type="range"]::-moz-range-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid var(--color-primary);
+      cursor: pointer;
+      pointer-events: auto;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+      transition: transform 0.15s, background-color 0.15s;
+    }
+
+    .dual-slider input[type="range"]::-moz-range-thumb:hover {
+      transform: scale(1.25);
+      background: var(--color-primary);
+    }
+
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    
+    .slider-labels span, .year-input {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      padding: 2px 8px;
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    
+    .year-input {
+      width: 65px;
+      text-align: center;
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -moz-appearance: textfield;
+    }
+    
+    .year-input::-webkit-outer-spin-button,
+    .year-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    
+    .year-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.1);
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .kpi-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
+
+    .kpi-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(5, 150, 105, 0.15);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+    }
+
+    .kpi-content {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 2;
+    }
+
+    .kpi-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .value-positive {
+      color: var(--color-primary);
+    }
+
+    .value-negative {
+      color: var(--color-danger);
+    }
+    
+    .value-arrivals, .value-spend {
+      color: var(--color-info);
+    }
+    
+    .value-neutral {
+      color: var(--text-primary);
+    }
+
+    .kpi-meta {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .kpi-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      z-index: 2;
+    }
+
+    .icon-negative {
+      background: var(--color-danger-glow);
+      color: var(--color-danger);
+      border: 1px solid rgba(225, 29, 72, 0.15);
+    }
+
+    .icon-positive {
+      background: var(--color-primary-glow);
+      color: var(--color-primary);
+      border: 1px solid rgba(5, 150, 105, 0.15);
+    }
+
+    .icon-arrivals, .icon-spend {
+      background: rgba(37, 99, 235, 0.06);
+      color: var(--color-info);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+    }
+
+    .icon-neutral {
+      background: rgba(0, 0, 0, 0.02);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+    }
+    
+    /* Comparador visual dentro do Net Spend */
+    .net-spend-bar-container {
+      height: 6px;
+      width: 100%;
+      background: #e2e8f0;
+      border-radius: 4px;
+      margin-top: 12px;
+      overflow: hidden;
+      display: flex;
+    }
+    
+    .net-spend-bar-fill {
+      height: 100%;
+      transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    
+    .fill-spend {
+      background-color: var(--color-info);
+    }
+    
+    .fill-sales {
+      background-color: var(--color-primary);
+    }
+
+    /* Listagem Header (Abas) */
+    .list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tabs-container {
+      display: flex;
+      background: #ffffff;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 10px 18px;
+      font-family: inherit;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+
+    .tab-btn.active#tab-arrivals-btn {
+      background: var(--color-info);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    }
+
+    .tab-btn.active#tab-departures-btn {
+      background: var(--color-primary);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+    }
+
+    .tab-btn:not(.active):hover {
+      color: var(--text-primary);
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    .tab-count {
+      font-size: 0.75rem;
+      background: rgba(0, 0, 0, 0.05);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .tab-btn.active .tab-count {
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+    }
+
+    /* Tabela de Atletas */
+    .table-wrapper {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+    }
+
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    .data-table th {
+      background: rgba(241, 245, 249, 0.9);
+      padding: 16px 20px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* Controles de Cabeçalho Superior */
+    .header-right-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .header-right-controls {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+
+    .lang-switcher {
+      display: flex;
+      background: #ffffff;
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+
+    .lang-btn {
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 6px 12px;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .lang-btn:hover:not(.active) {
+      color: var(--text-primary);
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    .lang-btn.active {
+      background: var(--color-primary);
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(5, 150, 105, 0.15);
+    }
+
+    .data-table td {
+      padding: 14px 20px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+      color: var(--text-primary);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .data-table tbody tr {
+      transition: background-color 0.2s;
+    }
+
+    .data-table tbody tr:hover {
+      background-color: rgba(0, 0, 0, 0.012);
+    }
+
+    .player-profile-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .player-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--color-info);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.8rem;
+      border: 1px solid rgba(37, 99, 235, 0.15);
+      flex-shrink: 0;
+    }
+    
+    .tab-btn-active-departures .player-badge {
+      background: rgba(5, 150, 105, 0.08);
+      color: var(--color-primary);
+      border: 1px solid rgba(5, 150, 105, 0.15);
+    }
+
+    .player-name-text {
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .club-interactive {
+      color: var(--text-secondary);
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.02);
+      border: 1px solid rgba(0, 0, 0, 0.02);
+    }
+
+    .club-interactive:hover {
+      color: var(--color-info);
+      background: rgba(37, 99, 235, 0.06);
+      border-color: rgba(37, 99, 235, 0.2);
+    }
+
+    .tab-btn-active-departures .club-interactive:hover {
+      color: var(--color-primary);
+      background: var(--color-primary-glow);
+      border-color: rgba(5, 150, 105, 0.2);
+    }
+    
+    .club-current {
+      color: var(--text-primary);
+      font-weight: 600;
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .date-text {
+      color: var(--text-secondary);
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+
+    .fee-badge {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .fee-badge.free {
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--color-info);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+    }
+
+    .tab-btn-active-departures .fee-badge.free {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--color-primary);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .fee-badge.undisclosed {
+      background: rgba(148, 163, 184, 0.1);
+      color: var(--text-secondary);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+    }
+
+    .fee-badge.paid {
+      background: rgba(37, 99, 235, 0.08);
+      color: #2563eb;
+      border: 1px solid rgba(37, 99, 235, 0.15);
+    }
+
+    .tab-btn-active-departures .fee-badge.paid {
+      background: rgba(5, 150, 105, 0.08);
+      color: var(--color-primary);
+      border: 1px solid rgba(5, 150, 105, 0.15);
+    }
+
+    /* Estado Vazio */
+    .empty-state {
+      padding: 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      text-align: center;
+      gap: 16px;
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      color: #cbd5e1;
+    }
+
+    .empty-state p {
+      font-size: 1rem;
+      max-width: 400px;
+    }
+
+    /* Paginação */
+    .pagination-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: rgba(0, 0, 0, 0.01);
+      border-top: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.85rem;
+    }
+
+    .pagination-info {
+      color: var(--text-secondary);
+    }
+    
+    .pagination-info strong {
+      color: var(--text-primary);
+    }
+
+    .pagination-buttons {
+      display: flex;
+      gap: 6px;
+    }
+
+    .page-btn {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      min-width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .page-btn:hover:not(:disabled) {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: white;
+      box-shadow: 0 2px 5px rgba(5, 150, 105, 0.15);
+    }
+
+    .page-btn.active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: white;
+      font-weight: 700;
+    }
+
+    .page-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .hidden {
+      display: none !important;
+    }
+
+    footer {
+      margin-top: 40px;
+      padding: 20px 0 10px 0;
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+
+    footer a {
+      color: var(--color-primary);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s, text-decoration 0.2s;
+    }
+
+    footer a:hover {
+      color: #047857;
+      text-decoration: underline;
+    }
+    
+    footer i {
+      color: var(--color-primary);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Tela de Carregamento -->
+  <div class="loader-overlay" id="loader-overlay">
+    <div class="loader-spinner">
+      <div class="spinner-ring"></div>
+      <i class="fas fa-futbol spinner-ball"></i>
+    </div>
+    <div class="loader-text">Transfermarkt Analytics</div>
+    <div class="loader-status" id="loader-status">Iniciando análise dos dados...</div>
+  </div>
+
+  <div class="container">
+    
+    <!-- Cabeçalho -->
+    <header>
+      <div class="header-title-container">
+        <div class="logo-container">
+          <i class="fas fa-chart-line"></i>
+        </div>
+        <div class="header-text">
+          <h1>Transfermarkt Analytics</h1>
+          <p>Dashboard de Análise de Mercado de Futebol</p>
+        </div>
+      </div>
+      <div class="header-right-controls">
+        <div class="lang-switcher">
+          <button class="lang-btn active" id="lang-btn-pt">PT</button>
+          <button class="lang-btn" id="lang-btn-en">EN</button>
+        </div>
+        <div class="dataset-badge">
+          <i class="fas fa-database"></i>
+          <span id="dataset-badge-text">transfers.csv | 173K+ registros</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="dashboard-grid">
+      
+      <!-- Seção de Filtros -->
+      <div class="filters-card">
+        <div class="filters-grid">
+          
+          <!-- Filtro de Clube (Autocomplete) -->
+          <div class="filter-item">
+            <label for="club-search-input"><i class="fas fa-shield-halved"></i> <span id="label-club-text">Clube de Análise</span></label>
+            <div class="autocomplete-container">
+              <input type="text" id="club-search-input" class="form-input" placeholder="Digite para buscar um clube..." autocomplete="off">
+              <i class="fas fa-search search-input-icon" id="club-search-icon"></i>
+              <i class="fas fa-times clear-input-icon hidden" id="club-clear-btn" title="Limpar busca"></i>
+              <div id="club-search-results" class="autocomplete-results hidden"></div>
+            </div>
+          </div>
+          
+          <!-- Filtro de Ano (Sliders Duplos) -->
+          <div class="filter-item">
+            <label><i class="fas fa-calendar-alt"></i> <span id="label-period-text">Período Analisado</span></label>
+            <div class="dual-slider-container">
+              <div class="dual-slider">
+                <div class="slider-track"></div>
+                <div class="slider-range" id="slider-range"></div>
+                <input type="range" id="min-year-slider">
+                <input type="range" id="max-year-slider">
+              </div>
+              <div class="slider-labels">
+                <input type="number" id="min-year-input" class="year-input">
+                <span id="slider-separator">até</span>
+                <input type="number" id="max-year-input" class="year-input">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Filtro de Ordenação -->
+          <div class="filter-item">
+            <label for="sort-select"><i class="fas fa-sort"></i> <span id="label-sort-text">Ordenar Jogadores por</span></label>
+            <select id="sort-select" class="form-select">
+              <option value="price_desc">Preço: Maior para Menor</option>
+              <option value="price_asc">Preço: Menor para Maior</option>
+              <option value="name_asc">Nome: A-Z</option>
+              <option value="name_desc">Nome: Z-A</option>
+              <option value="market_value_desc">Maior Valor de Mercado</option>
+            </select>
+          </div>
+          
+        </div>
+      </div>
+
+      <!-- KPIs Dashboard -->
+      <div class="kpi-grid">
+        
+        <!-- KPI Contratações -->
+        <div class="kpi-card kpi-card-arrivals">
+          <div class="kpi-content">
+            <span class="kpi-label" id="label-kpi-spend">Total de Gastos (Chegadas)</span>
+            <h2 class="kpi-value value-arrivals" id="kpi-total-spend">€0</h2>
+            <span class="kpi-meta" id="meta-arrivals-count">0 contratações</span>
+          </div>
+          <div class="kpi-icon icon-arrivals">
+            <i class="fas fa-shopping-cart"></i>
+          </div>
+        </div>
+        
+        <!-- KPI Vendas -->
+        <div class="kpi-card kpi-card-departures">
+          <div class="kpi-content">
+            <span class="kpi-label" id="label-kpi-sales">Total de Vendas (Saídas)</span>
+            <h2 class="kpi-value value-positive" id="kpi-total-sales">€0</h2>
+            <span class="kpi-meta" id="meta-departures-count">0 vendas</span>
+          </div>
+          <div class="kpi-icon icon-positive">
+            <i class="fas fa-hand-holding-dollar"></i>
+          </div>
+        </div>
+        
+        <!-- KPI Saldo Líquido -->
+        <div class="kpi-card">
+          <div class="kpi-content">
+            <span class="kpi-label" id="label-kpi-net">Saldo Líquido (Net Spend)</span>
+            <h2 class="kpi-value" id="kpi-net-spend">€0</h2>
+            <span class="kpi-meta" id="kpi-net-spend-status">Saldo de transferências</span>
+            
+            <!-- Barra comparativa visual -->
+            <div class="net-spend-bar-container" id="net-spend-bar-container">
+              <div class="net-spend-bar-fill fill-spend" id="bar-fill-spend" style="width: 50%" title="Proporção de Investimento"></div>
+              <div class="net-spend-bar-fill fill-sales" id="bar-fill-sales" style="width: 50%" title="Proporção de Venda"></div>
+            </div>
+          </div>
+          <div class="kpi-icon" id="kpi-net-spend-icon">
+            <i class="fas fa-scale-balanced"></i>
+          </div>
+        </div>
+        
+      </div>
+
+      <!-- Listagem Header: Abas -->
+      <div class="list-header">
+        <div class="tabs-container">
+          <button class="tab-btn active" id="tab-arrivals-btn">
+            <i class="fas fa-arrow-down-long"></i> <span id="tab-arrivals-text">Chegadas</span>
+            <span class="tab-count" id="count-arrivals">0</span>
+          </button>
+          <button class="tab-btn" id="tab-departures-btn">
+            <i class="fas fa-arrow-up-long"></i> <span id="tab-departures-text">Saídas</span>
+            <span class="tab-count" id="count-departures">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabela Principal -->
+      <div class="table-wrapper">
+        <div class="table-container">
+          <table class="data-table" id="data-table">
+            <thead>
+              <tr>
+                <th id="th-player">Atleta</th>
+                <th id="th-from-club">Clube de Origem</th>
+                <th id="th-to-club">Clube de Destino</th>
+                <th id="th-date">Data da Transf.</th>
+                <th id="th-market">Valor de Mercado</th>
+                <th id="th-fee">Taxa de Transferência</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <!-- Preenchido via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Estado Vazio -->
+        <div class="empty-state hidden" id="empty-state">
+          <i class="far fa-folder-open"></i>
+          <h3 id="empty-state-title">Nenhum registro encontrado</h3>
+          <p id="empty-state-text">Nenhuma transferência atende aos critérios do filtro no período selecionado.</p>
+        </div>
+        
+        <!-- Footer de Paginação -->
+        <div class="pagination-footer" id="pagination-footer">
+          <div class="pagination-info" id="pagination-info">
+            Mostrando <strong>0-0</strong> de <strong>0</strong> registros
+          </div>
+          <div class="pagination-buttons" id="pagination-buttons">
+            <!-- Gerado via JavaScript -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+    
+    <!-- Footer de Referência do Dataset -->
+    <footer>
+      <i class="fas fa-database"></i>
+      <span id="footer-text">Fonte dos dados: <a href="https://www.kaggle.com/datasets/davidcariboo/player-scores" target="_blank" rel="noopener noreferrer">Kaggle - Football Data from Transfermarkt</a></span>
+    </footer>
+  </div>
+
+  <script>
+    // --- DICIONÁRIO DE TRADUÇÕES ---
+    const TRANSLATIONS = {
+      pt: {
+        title: "Transfermarkt Analytics",
+        subtitle: "Dashboard de Análise de Mercado de Futebol",
+        datasetBadge: "transfers.csv | 173K+ registros",
+        clubLabel: "Clube de Análise",
+        clubPlaceholder: "Digite para buscar um clube...",
+        popularClubsHeader: "Clubes Recorrentes",
+        noClubFound: "Nenhum clube correspondente",
+        moreClubsFound: "Mais {count} clubes encontrados...",
+        periodLabel: "Período Analisado",
+        periodSeparator: "até",
+        sortLabel: "Ordenar Jogadores por",
+        sortPriceDesc: "Preço: Maior para Menor",
+        sortPriceAsc: "Preço: Menor para Maior",
+        sortNameAsc: "Nome: A-Z",
+        sortNameDesc: "Nome: Z-A",
+        sortMarketValueDesc: "Maior Valor de Mercado",
+        kpiTotalSpend: "Total de Gastos (Chegadas)",
+        kpiTotalSales: "Total de Vendas (Saídas)",
+        kpiNetSpend: "Saldo Líquido (Net Spend)",
+        signingsSuffix: "contratações",
+        salesSuffix: "vendas",
+        netSpendStatusProfit: "Saldo Líquido Positivo (Lucro)",
+        netSpendStatusSpend: "Saldo Líquido Negativo (Gasto)",
+        netSpendStatusNeutral: "Saldo Neutro",
+        tabArrivals: "Chegadas",
+        tabDepartures: "Saídas",
+        thPlayer: "Atleta",
+        thFromClub: "Clube de Origem",
+        thToClub: "Clube de Destino",
+        thDate: "Data da Transf.",
+        thMarketValue: "Valor de Mercado",
+        thFee: "Taxa de Transferência",
+        emptyStateTitle: "Nenhum registro encontrado",
+        emptyStateText: "Nenhuma transferência atende aos critérios dos filtros ativos no período selecionado.",
+        paginationShowing: "Mostrando <strong>{start}-{end}</strong> de <strong>{total}</strong> transferências",
+        notDisclosed: "Não informado",
+        free: "Gratuito",
+        loaderInitializing: "Iniciando análise dos dados...",
+        loaderDownloading: "Fazendo download do arquivo transfers.csv...",
+        loaderParsing: "Processando o arquivo e fazendo o parse...",
+        loaderIndexing: "Estruturando index de clubes e anos...",
+        loaderFallbackTitle: "Restrição de segurança (CORS) detectada ou arquivo não encontrado. Para carregar o dashboard sem um servidor HTTP local:",
+        loaderFallbackBtn: "Selecionar transfers.csv localmente",
+        loaderLocalProcessing: "Carregando e processando arquivo local...",
+        loaderEmptyError: "Erro: arquivo CSV vazio.",
+        footerText: 'Fonte dos dados: <a href="https://www.kaggle.com/datasets/davidcariboo/player-scores" target="_blank" rel="noopener noreferrer">Kaggle - Football Data from Transfermarkt</a>'
+      },
+      en: {
+        title: "Transfermarkt Analytics",
+        subtitle: "Football Transfer Market Analysis Dashboard",
+        datasetBadge: "transfers.csv | 173K+ records",
+        clubLabel: "Analysis Club",
+        clubPlaceholder: "Type to search a club...",
+        popularClubsHeader: "Frequent Clubs",
+        noClubFound: "No matching club",
+        moreClubsFound: "More {count} clubs found...",
+        periodLabel: "Analyzed Period",
+        periodSeparator: "to",
+        sortLabel: "Sort Players by",
+        sortPriceDesc: "Price: High to Low",
+        sortPriceAsc: "Price: Low to High",
+        sortNameAsc: "Name: A-Z",
+        sortNameDesc: "Name: Z-A",
+        sortMarketValueDesc: "Highest Market Value",
+        kpiTotalSpend: "Total Spend (Arrivals)",
+        kpiTotalSales: "Total Sales (Departures)",
+        kpiNetSpend: "Net Spend",
+        signingsSuffix: "signings",
+        salesSuffix: "sales",
+        netSpendStatusProfit: "Positive Net Spend (Profit)",
+        netSpendStatusSpend: "Negative Net Spend (Spend)",
+        netSpendStatusNeutral: "Neutral Balance",
+        tabArrivals: "Arrivals",
+        tabDepartures: "Departures",
+        thPlayer: "Player",
+        thFromClub: "From Club",
+        thToClub: "To Club",
+        thDate: "Transfer Date",
+        thMarketValue: "Market Value",
+        thFee: "Transfer Fee",
+        emptyStateTitle: "No records found",
+        emptyStateText: "No transfers match the active filter criteria in the selected period.",
+        paginationShowing: "Showing <strong>{start}-{end}</strong> of <strong>{total}</strong> transfers",
+        notDisclosed: "Not disclosed",
+        free: "Free",
+        loaderInitializing: "Starting data analysis...",
+        loaderDownloading: "Downloading transfers.csv file...",
+        loaderParsing: "Processing and parsing file...",
+        loaderIndexing: "Indexing clubs and years...",
+        loaderFallbackTitle: "Security restriction (CORS) or file not found. To run the dashboard without a local server:",
+        loaderFallbackBtn: "Select transfers.csv locally",
+        loaderLocalProcessing: "Loading and processing local file...",
+        loaderEmptyError: "Error: empty CSV file.",
+        footerText: 'Data source: <a href="https://www.kaggle.com/datasets/davidcariboo/player-scores" target="_blank" rel="noopener noreferrer">Kaggle - Football Data from Transfermarkt</a>'
+      }
+    };
+
+    // --- ESTADO DA APLICAÇÃO ---
+    let currentLang = 'pt';         // Idioma ativo da aplicação
+    let allTransfers = [];          // Todos os dados brutos e formatados do CSV
+    let clubs = [];                 // Lista única e ordenada de todos os clubes
+    let popularClubs = [];          // Top 20 clubes com maior volume de transferências
+    let minYear = 2000;             // Ano mínimo histórico do dataset
+    let maxYear = 2026;             // Ano máximo histórico fixado por diretiva
+    
+    // Filtros atuais
+    let selectedClub = 'Grêmio';    // Clube selecionado por padrão
+    let currentFilters = {
+      minYear: 2000,
+      maxYear: 2026,
+      sortBy: 'price_desc'
+    };
+    
+    // Dados filtrados do clube atual (antes dos filtros de ano)
+    let activeClubArrivals = [];    // Chegadas totais do clube
+    let activeClubDepartures = [];  // Saídas totais do clube
+    
+    // Dados atualmente filtrados e prontos para renderização
+    let finalArrivals = [];         
+    let finalDepartures = [];       
+    
+    // Estado de navegação interna
+    let currentTab = 'arrivals';    // 'arrivals' ou 'departures'
+    let currentPage = 1;
+    const pageSize = 15;
+    
+    // Controle de índice do autocomplete
+    let autocompleteActiveIndex = -1;
+
+    // --- ELEMENTOS DO DOM ---
+    const loaderOverlay = document.getElementById('loader-overlay');
+    const loaderStatus = document.getElementById('loader-status');
+    const clubSearchInput = document.getElementById('club-search-input');
+    const clubSearchIcon = document.getElementById('club-search-icon');
+    const clubClearBtn = document.getElementById('club-clear-btn');
+    const clubSearchResults = document.getElementById('club-search-results');
+    const minYearSlider = document.getElementById('min-year-slider');
+    const maxYearSlider = document.getElementById('max-year-slider');
+    const minYearInput = document.getElementById('min-year-input');
+    const maxYearInput = document.getElementById('max-year-input');
+    const sortSelect = document.getElementById('sort-select');
+    
+    const kpiTotalSpend = document.getElementById('kpi-total-spend');
+    const kpiTotalSales = document.getElementById('kpi-total-sales');
+    const kpiNetSpend = document.getElementById('kpi-net-spend');
+    const kpiNetSpendCard = kpiNetSpend.closest('.kpi-card');
+    const kpiNetSpendIcon = document.getElementById('kpi-net-spend-icon');
+    const kpiNetSpendStatus = document.getElementById('kpi-net-spend-status');
+    
+    const barFillSpend = document.getElementById('bar-fill-spend');
+    const barFillSales = document.getElementById('bar-fill-sales');
+    const netSpendBarContainer = document.getElementById('net-spend-bar-container');
+    
+    const metaArrivalsCount = document.getElementById('meta-arrivals-count');
+    const metaDeparturesCount = document.getElementById('meta-departures-count');
+    const countArrivalsBadge = document.getElementById('count-arrivals');
+    const countDeparturesBadge = document.getElementById('count-departures');
+    
+    const tabArrivalsBtn = document.getElementById('tab-arrivals-btn');
+    const tabDeparturesBtn = document.getElementById('tab-departures-btn');
+    
+    const tableBody = document.getElementById('table-body');
+    const emptyState = document.getElementById('empty-state');
+    const emptyStateText = document.getElementById('empty-state-text');
+    const paginationFooter = document.getElementById('pagination-footer');
+    const paginationInfo = document.getElementById('pagination-info');
+    const paginationButtons = document.getElementById('pagination-buttons');
+    
+    const langBtnPt = document.getElementById('lang-btn-pt');
+    const langBtnEn = document.getElementById('lang-btn-en');
+
+    // --- CARREGAMENTO DE DADOS ---
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCSV();
+      setupEventListeners();
+    });
+
+    async function loadCSV() {
+      try {
+        const t = TRANSLATIONS[currentLang];
+        loaderStatus.innerHTML = `${t.loaderDownloading} <code style="color:var(--color-primary)">transfers.csv</code>...`;
+        
+        // Chamada fetch simples
+        const response = await fetch('transfers.csv');
+        if (!response.ok) {
+          throw new Error('Não foi possível encontrar o arquivo "transfers.csv" no diretório da aplicação.');
+        }
+        
+        loaderStatus.textContent = t.loaderParsing;
+        const csvText = await response.text();
+        
+        // Parsing eficiente no navegador via PapaParse
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          dynamicTyping: true, // Garante que floats e ints sejam convertidos automaticamente
+          complete: function(results) {
+            if (results.data && results.data.length > 0) {
+              processData(results.data);
+            } else {
+              throw new Error('O arquivo CSV está vazio ou não possui cabeçalhos válidos.');
+            }
+          },
+          error: function(err) {
+            throw new Error('Falha no parser do PapaParse: ' + err.message);
+          }
+        });
+        
+      } catch (error) {
+        console.warn('Falha ao baixar transfers.csv automaticamente. Ativando seletor manual (CORS/file://).', error);
+        const t = TRANSLATIONS[currentLang];
+        loaderStatus.innerHTML = `
+          <div style="margin-top: 16px; padding: 18px; background: rgba(0,0,0,0.02); border: 2px dashed rgba(0,0,0,0.1); border-radius: 12px; display: inline-block;">
+            <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 14px; max-width: 420px; line-height: 1.4;">
+              <i class="fas fa-circle-info" style="color: var(--color-info)"></i> 
+              ${t.loaderFallbackTitle}
+            </p>
+            <input type="file" id="csv-fallback-input" accept=".csv" style="display: none;">
+            <button class="page-btn" id="upload-btn" style="margin: 0 auto; display: flex; align-items: center; gap: 8px; background: var(--color-primary); border-color: var(--color-primary); color: white; padding: 8px 16px; font-weight: 600;">
+              <i class="fas fa-file-csv"></i> ${t.loaderFallbackBtn}
+            </button>
+          </div>
+        `;
+        
+        const uploadBtn = document.getElementById('upload-btn');
+        const fallbackInput = document.getElementById('csv-fallback-input');
+        
+        if (uploadBtn && fallbackInput) {
+          uploadBtn.addEventListener('click', () => {
+            fallbackInput.click();
+          });
+          
+          fallbackInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+              loaderStatus.textContent = t.loaderLocalProcessing;
+              Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true,
+                complete: function(results) {
+                  if (results.data && results.data.length > 0) {
+                    processData(results.data);
+                  } else {
+                    loaderStatus.innerHTML = `<span style="color:var(--color-danger)">${t.loaderEmptyError}</span>`;
+                  }
+                },
+                error: function(err) {
+                  loaderStatus.innerHTML = `<span style="color:var(--color-danger)">Erro no parser: ${err.message}</span>`;
+                }
+              });
+            }
+          });
+        }
+      }
+    }
+
+    // Normalização para busca case-insensitive e tolerante a acentos
+    function normalizeText(text) {
+      if (!text) return '';
+      return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+
+    function processData(rawData) {
+      loaderStatus.textContent = TRANSLATIONS[currentLang].loaderIndexing;
+      
+      const clubSet = new Set();
+      const clubCounts = {};
+      let calculatedMinYear = Infinity;
+      
+      // Processamento e higienização em um único loop O(N)
+      allTransfers = rawData.map(row => {
+        const fee = (row.transfer_fee === '' || row.transfer_fee === undefined || row.transfer_fee === null) ? null : parseFloat(row.transfer_fee);
+        const marketVal = (row.market_value_in_eur === '' || row.market_value_in_eur === undefined || row.market_value_in_eur === null) ? null : parseFloat(row.market_value_in_eur);
+        
+        let year = null;
+        if (row.transfer_date) {
+          // Extrai o ano do formato YYYY-MM-DD
+          const match = String(row.transfer_date).match(/^(\d{4})/);
+          if (match) {
+            year = parseInt(match[1]);
+          }
+        }
+        
+        const fromClub = row.from_club_name ? String(row.from_club_name).trim() : '';
+        const toClub = row.to_club_name ? String(row.to_club_name).trim() : '';
+        const player = row.player_name ? String(row.player_name).trim() : 'Atleta Desconhecido';
+        
+        // Coleta estatísticas de clubes para a lista inteligente
+        if (fromClub && fromClub !== 'Retired' && fromClub !== 'Without Club') {
+          clubSet.add(fromClub);
+          clubCounts[fromClub] = (clubCounts[fromClub] || 0) + 1;
+        }
+        if (toClub && toClub !== 'Retired' && toClub !== 'Without Club') {
+          clubSet.add(toClub);
+          clubCounts[toClub] = (clubCounts[toClub] || 0) + 1;
+        }
+        
+        // Coleta limites de ano
+        if (year && !isNaN(year)) {
+          if (year < calculatedMinYear) calculatedMinYear = year;
+        }
+        
+        return {
+          playerId: row.player_id,
+          date: row.transfer_date || '',
+          year: year,
+          season: row.transfer_season || '',
+          fromClubId: row.from_club_id,
+          toClubId: row.to_club_id,
+          fromClubName: fromClub,
+          toClubName: toClub,
+          fee: fee,
+          marketValue: marketVal,
+          playerName: player
+        };
+      }).filter(t => t.playerName && (t.fromClubName || t.toClubName));
+      
+      // Ordenação alfabética dos clubes únicos
+      clubs = Array.from(clubSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      
+      // Top 20 clubes populares para exibição no autocomplete em branco
+      popularClubs = Object.keys(clubCounts)
+        .sort((a, b) => clubCounts[b] - clubCounts[a])
+        .slice(0, 20);
+      
+      // Define limites de sliders de ano baseados no dataset, travando o ano máximo em 2026
+      minYear = calculatedMinYear === Infinity ? 2000 : calculatedMinYear;
+      maxYear = 2026; // Fixado estritamente por solicitação do usuário
+      
+      currentFilters.minYear = minYear;
+      currentFilters.maxYear = maxYear;
+      
+      // Inicializa inputs de ano na interface
+      setupYearSliders();
+      
+      // Verifica se o Grêmio está no dataset e o seleciona
+      const gremioExact = clubs.find(c => normalizeText(c) === 'gremio');
+      if (gremioExact) {
+        selectedClub = gremioExact;
+      } else {
+        selectedClub = clubs[0] || '';
+      }
+      
+      clubSearchInput.value = selectedClub;
+      if (selectedClub) {
+        clubClearBtn.classList.remove('hidden');
+        clubSearchIcon.classList.add('hidden');
+      } else {
+        clubClearBtn.classList.add('hidden');
+        clubSearchIcon.classList.remove('hidden');
+      }
+      
+      // Extrai sub-arrays indexados e atualiza a UI
+      selectClub(selectedClub);
+      
+      // Oculta loader
+      setTimeout(() => {
+        loaderOverlay.classList.add('hidden');
+      }, 500);
+    }
+
+    // --- CONFIGURAÇÃO DE CONTROLES ---
+    function setupYearSliders() {
+      minYearSlider.min = minYear;
+      minYearSlider.max = maxYear;
+      minYearSlider.value = minYear;
+      
+      maxYearSlider.min = minYear;
+      maxYearSlider.max = maxYear;
+      maxYearSlider.value = maxYear;
+      
+      minYearInput.min = minYear;
+      minYearInput.max = maxYear;
+      minYearInput.value = minYear;
+      
+      maxYearInput.min = minYear;
+      maxYearInput.max = maxYear;
+      maxYearInput.value = maxYear;
+      
+      updateSliderVisuals();
+    }
+
+    function updateSliderVisuals() {
+      let val1 = parseInt(minYearSlider.value);
+      let val2 = parseInt(maxYearSlider.value);
+      
+      if (val1 > val2) {
+        minYearSlider.value = val2;
+        val1 = val2;
+      }
+      
+      if (document.activeElement !== minYearInput) {
+        minYearInput.value = val1;
+      }
+      if (document.activeElement !== maxYearInput) {
+        maxYearInput.value = val2;
+      }
+      
+      currentFilters.minYear = val1;
+      currentFilters.maxYear = val2;
+      
+      const range = maxYear - minYear;
+      if (range > 0) {
+        const leftPercent = ((val1 - minYear) / range) * 100;
+        const widthPercent = ((val2 - val1) / range) * 100;
+        
+        document.getElementById('slider-range').style.left = leftPercent + '%';
+        document.getElementById('slider-range').style.width = widthPercent + '%';
+      }
+    }
+
+    function syncInputsToSliders(updateInputFields = true) {
+      let val1 = parseInt(minYearInput.value);
+      let val2 = parseInt(maxYearInput.value);
+      
+      if (isNaN(val1) || isNaN(val2)) {
+        if (!updateInputFields) return;
+        if (isNaN(val1)) val1 = parseInt(minYearSlider.value);
+        if (isNaN(val2)) val2 = parseInt(maxYearSlider.value);
+      }
+      
+      if (val1 < minYear) val1 = minYear;
+      if (val1 > maxYear) val1 = maxYear;
+      if (val2 < minYear) val2 = minYear;
+      if (val2 > maxYear) val2 = maxYear;
+      
+      if (val1 > val2) {
+        if (document.activeElement === minYearInput) {
+          val2 = val1;
+          maxYearInput.value = val2;
+        } else {
+          val1 = val2;
+          minYearInput.value = val1;
+        }
+      }
+      
+      minYearSlider.value = val1;
+      maxYearSlider.value = val2;
+      
+      currentFilters.minYear = val1;
+      currentFilters.maxYear = val2;
+      
+      const range = maxYear - minYear;
+      if (range > 0) {
+        const leftPercent = ((val1 - minYear) / range) * 100;
+        const widthPercent = ((val2 - val1) / range) * 100;
+        
+        document.getElementById('slider-range').style.left = leftPercent + '%';
+        document.getElementById('slider-range').style.width = widthPercent + '%';
+      }
+      
+      if (updateInputFields) {
+        minYearInput.value = val1;
+        maxYearInput.value = val2;
+      }
+      
+      updateDashboard();
+    }
+
+    // --- EVENT LISTENERS ---
+    function setupEventListeners() {
+      // Idioma PT
+      langBtnPt.addEventListener('click', () => {
+        if (currentLang === 'pt') return;
+        currentLang = 'pt';
+        langBtnPt.classList.add('active');
+        langBtnEn.classList.remove('active');
+        updateLanguage();
+      });
+
+      // Idioma EN
+      langBtnEn.addEventListener('click', () => {
+        if (currentLang === 'en') return;
+        currentLang = 'en';
+        langBtnEn.classList.add('active');
+        langBtnPt.classList.remove('active');
+        updateLanguage();
+      });
+
+      // Sliders de Ano
+      minYearSlider.addEventListener('input', () => {
+        minYearSlider.style.zIndex = '4';
+        maxYearSlider.style.zIndex = '3';
+        updateSliderVisuals();
+        updateDashboard();
+      });
+      maxYearSlider.addEventListener('input', () => {
+        maxYearSlider.style.zIndex = '4';
+        minYearSlider.style.zIndex = '3';
+        updateSliderVisuals();
+        updateDashboard();
+      });
+      
+      // Inputs de Ano
+      minYearInput.addEventListener('input', () => {
+        const valStr = minYearInput.value;
+        if (valStr.length === 4) {
+          const val = parseInt(valStr);
+          if (!isNaN(val) && val >= minYear && val <= maxYear) {
+            syncInputsToSliders(false);
+          }
+        }
+      });
+      
+      maxYearInput.addEventListener('input', () => {
+        const valStr = maxYearInput.value;
+        if (valStr.length === 4) {
+          const val = parseInt(valStr);
+          if (!isNaN(val) && val >= minYear && val <= maxYear) {
+            syncInputsToSliders(false);
+          }
+        }
+      });
+      
+      minYearInput.addEventListener('change', () => {
+        syncInputsToSliders(true);
+      });
+      
+      maxYearInput.addEventListener('change', () => {
+        syncInputsToSliders(true);
+      });
+      
+      minYearInput.addEventListener('blur', () => {
+        syncInputsToSliders(true);
+      });
+      
+      maxYearInput.addEventListener('blur', () => {
+        syncInputsToSliders(true);
+      });
+      
+      minYearInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          minYearInput.blur();
+        }
+      });
+      
+      maxYearInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          maxYearInput.blur();
+        }
+      });
+      
+      minYearSlider.addEventListener('mouseenter', () => {
+        minYearSlider.style.zIndex = '4';
+        maxYearSlider.style.zIndex = '3';
+      });
+      maxYearSlider.addEventListener('mouseenter', () => {
+        maxYearSlider.style.zIndex = '4';
+        minYearSlider.style.zIndex = '3';
+      });
+      
+      // Ordenação
+      sortSelect.addEventListener('change', (e) => {
+        currentFilters.sortBy = e.target.value;
+        currentPage = 1;
+        renderActiveTable();
+      });
+      
+      // Abas
+      tabArrivalsBtn.addEventListener('click', () => switchTab('arrivals'));
+      tabDeparturesBtn.addEventListener('click', () => switchTab('departures'));
+      
+      // Autocomplete de Clubes (Input)
+      clubSearchInput.addEventListener('focus', () => {
+        renderAutocompleteList(clubSearchInput.value);
+      });
+      
+      clubSearchInput.addEventListener('blur', () => {
+        // Delay para permitir o mousedown nos itens
+        setTimeout(() => {
+          clubSearchResults.classList.add('hidden');
+        }, 220);
+      });
+      
+      clubSearchInput.addEventListener('input', (e) => {
+        autocompleteActiveIndex = -1;
+        renderAutocompleteList(e.target.value);
+        if (e.target.value) {
+          clubClearBtn.classList.remove('hidden');
+          clubSearchIcon.classList.add('hidden');
+        } else {
+          clubClearBtn.classList.add('hidden');
+          clubSearchIcon.classList.remove('hidden');
+        }
+      });
+      
+      // Limpar busca de clube
+      clubClearBtn.addEventListener('click', () => {
+        clubSearchInput.value = '';
+        clubClearBtn.classList.add('hidden');
+        clubSearchIcon.classList.remove('hidden');
+        clubSearchInput.focus();
+        renderAutocompleteList('');
+      });
+      
+      // Navegação por teclado no Autocomplete
+      clubSearchInput.addEventListener('keydown', (e) => {
+        const items = clubSearchResults.querySelectorAll('.autocomplete-item');
+        if (clubSearchResults.classList.contains('hidden') || items.length === 0) return;
+        
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          autocompleteActiveIndex = (autocompleteActiveIndex + 1) % items.length;
+          highlightAutocompleteItem(items);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          autocompleteActiveIndex = (autocompleteActiveIndex - 1 + items.length) % items.length;
+          highlightAutocompleteItem(items);
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (autocompleteActiveIndex >= 0 && autocompleteActiveIndex < items.length) {
+            if (typeof items[autocompleteActiveIndex].mousedownTrigger === 'function') {
+              items[autocompleteActiveIndex].mousedownTrigger();
+            }
+          } else if (items.length > 0) {
+            if (typeof items[0].mousedownTrigger === 'function') {
+              items[0].mousedownTrigger();
+            }
+          }
+        } else if (e.key === 'Escape') {
+          clubSearchResults.classList.add('hidden');
+          clubSearchInput.blur();
+        }
+      });
+      
+      // Fechar autocomplete clicando fora
+      document.addEventListener('click', (e) => {
+        const container = document.querySelector('.autocomplete-container');
+        if (container && !container.contains(e.target)) {
+          clubSearchResults.classList.add('hidden');
+        }
+      });
+    }
+
+    // --- CONTROLE DE AUTOCOMPLETE ---
+    function renderAutocompleteList(query) {
+      clubSearchResults.innerHTML = '';
+      autocompleteActiveIndex = -1;
+      
+      if (!query) {
+        // Mostra clubes populares se o campo estiver limpo e focado
+        const header = document.createElement('div');
+        header.className = 'autocomplete-header';
+        header.innerHTML = '<i class="fas fa-fire"></i> Clubes Recorrentes';
+        clubSearchResults.appendChild(header);
+        
+        popularClubs.forEach(club => {
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          item.textContent = club;
+          
+          const mousedownHandler = () => {
+            selectClub(club);
+          };
+          item.addEventListener('mousedown', mousedownHandler);
+          item.mousedownTrigger = mousedownHandler; // Referência direta para teclado
+          
+          clubSearchResults.appendChild(item);
+        });
+        
+        clubSearchResults.classList.remove('hidden');
+        return;
+      }
+      
+      const normQuery = normalizeText(query);
+      const matched = clubs.filter(c => normalizeText(c).includes(normQuery));
+      
+      if (matched.length === 0) {
+        const emptyItem = document.createElement('div');
+        emptyItem.className = 'autocomplete-item no-results';
+        emptyItem.textContent = 'Nenhum clube correspondente';
+        clubSearchResults.appendChild(emptyItem);
+        clubSearchResults.classList.remove('hidden');
+        return;
+      }
+      
+      const limit = 100;
+      const slice = matched.slice(0, limit);
+      
+      slice.forEach(club => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.textContent = club;
+        
+        const mousedownHandler = () => {
+          selectClub(club);
+        };
+        item.addEventListener('mousedown', mousedownHandler);
+        item.mousedownTrigger = mousedownHandler;
+        
+        clubSearchResults.appendChild(item);
+      });
+      
+      if (matched.length > limit) {
+        const moreItem = document.createElement('div');
+        moreItem.className = 'autocomplete-item-more';
+        moreItem.textContent = `Mais ${matched.length - limit} clubes encontrados...`;
+        clubSearchResults.appendChild(moreItem);
+      }
+      
+      clubSearchResults.classList.remove('hidden');
+    }
+
+    function highlightAutocompleteItem(items) {
+      items.forEach((item, idx) => {
+        if (idx === autocompleteActiveIndex) {
+          item.classList.add('active');
+          item.scrollIntoView({ block: 'nearest' });
+        } else {
+          item.classList.remove('active');
+        }
+      });
+    }
+
+    // --- CONTROLE DE FILTROS E CRUZAMENTO ---
+    // --- ATUALIZAÇÃO DE IDIOMA (I18N) ---
+    function updateLanguage() {
+      const t = TRANSLATIONS[currentLang];
+      
+      // Título e cabeçalho
+      document.querySelector('.header-text h1').textContent = t.title;
+      document.querySelector('.header-text p').textContent = t.subtitle;
+      document.getElementById('dataset-badge-text').textContent = t.datasetBadge;
+      
+      // Filtros
+      document.getElementById('label-club-text').textContent = t.clubLabel;
+      clubSearchInput.placeholder = t.clubPlaceholder;
+      document.getElementById('label-period-text').textContent = t.periodLabel;
+      document.getElementById('slider-separator').textContent = t.periodSeparator;
+      document.getElementById('label-sort-text').textContent = t.sortLabel;
+      
+      // Opções do Select de Ordenação
+      sortSelect.options[0].textContent = t.sortPriceDesc;
+      sortSelect.options[1].textContent = t.sortPriceAsc;
+      sortSelect.options[2].textContent = t.sortNameAsc;
+      sortSelect.options[3].textContent = t.sortNameDesc;
+      sortSelect.options[4].textContent = t.sortMarketValueDesc;
+      
+      // KPIs
+      document.getElementById('label-kpi-spend').textContent = t.kpiTotalSpend;
+      document.getElementById('label-kpi-sales').textContent = t.kpiTotalSales;
+      document.getElementById('label-kpi-net').textContent = t.kpiNetSpend;
+      
+      // Abas
+      document.getElementById('tab-arrivals-text').textContent = t.tabArrivals;
+      document.getElementById('tab-departures-text').textContent = t.tabDepartures;
+      
+      // Cabeçalho da Tabela
+      document.getElementById('th-player').textContent = t.thPlayer;
+      document.getElementById('th-from-club').textContent = t.thFromClub;
+      document.getElementById('th-to-club').textContent = t.thToClub;
+      document.getElementById('th-date').textContent = t.thDate;
+      document.getElementById('th-market').textContent = t.thMarketValue;
+      document.getElementById('th-fee').textContent = t.thFee;
+      
+      // Estado vazio
+      document.getElementById('empty-state-title').textContent = t.emptyStateTitle;
+      
+      // Footer do dataset
+      document.getElementById('footer-text').innerHTML = t.footerText;
+      
+      // Forçar atualização do dashboard para atualizar os KPIs dinâmicos e a tabela formatada
+      updateDashboard();
+    }
+
+    function selectClub(clubName) {
+      if (!clubName) return;
+      selectedClub = clubName;
+      clubSearchInput.value = clubName;
+      clubSearchInput.blur();
+      clubSearchResults.classList.add('hidden');
+      
+      clubClearBtn.classList.remove('hidden');
+      clubSearchIcon.classList.add('hidden');
+      
+      // Otimização crucial: Pré-filtragem O(N) do clube para arrays dedicados.
+      activeClubArrivals = allTransfers.filter(t => t.toClubName === selectedClub);
+      activeClubDepartures = allTransfers.filter(t => t.fromClubName === selectedClub);
+      
+      currentPage = 1;
+      updateDashboard();
+    }
+
+    function updateDashboard() {
+      // 1. Aplica filtros de Ano
+      const min = currentFilters.minYear;
+      const max = currentFilters.maxYear;
+      
+      // Cruzamento Bidirecional
+      finalArrivals = activeClubArrivals.filter(t => t.year >= min && t.year <= max);
+      finalDepartures = activeClubDepartures.filter(t => t.year >= min && t.year <= max);
+      
+      // 2. Calcula KPIs Financeiros baseados no período do slider
+      calculateKPIs(finalArrivals, finalDepartures);
+      
+      // 3. Atualiza contadores nas abas
+      countArrivalsBadge.textContent = finalArrivals.length;
+      countDeparturesBadge.textContent = finalDepartures.length;
+      
+      // 4. Aplica ordenação e renderiza a tabela ativa
+      applyFiltersAndRerender();
+    }
+
+    function applyFiltersAndRerender() {
+      let listToRender = currentTab === 'arrivals' ? finalArrivals : finalDepartures;
+      
+      // Aplica ordenação
+      sortList(listToRender, currentFilters.sortBy);
+      
+      // Renderiza a lista filtrada na tabela com paginação
+      renderTable(listToRender);
+    }
+
+    // --- FORMATADORES FINANCEIROS ---
+    function formatMoney(value, isFee = false) {
+      if (value === null || value === undefined || isNaN(value)) {
+        return TRANSLATIONS[currentLang].notDisclosed;
+      }
+      
+      // Taxas zeradas representam passe livre/fim de contrato
+      if (value === 0) {
+        return isFee ? TRANSLATIONS[currentLang].free : TRANSLATIONS[currentLang].notDisclosed;
+      }
+      
+      const isNegative = value < 0;
+      const absVal = Math.abs(value);
+      let formatted = "";
+      
+      // Abreviações amigáveis (M para Milhões, K para Milhares)
+      if (absVal >= 1000000) {
+        const val = absVal / 1000000;
+        formatted = "€" + Number(val.toFixed(2)).toLocaleString(currentLang === 'pt' ? 'pt-BR' : 'en-US') + "M";
+      } else if (absVal >= 1000) {
+        const val = absVal / 1000;
+        formatted = "€" + Number(val.toFixed(2)).toLocaleString(currentLang === 'pt' ? 'pt-BR' : 'en-US') + "K";
+      } else {
+        formatted = "€" + absVal.toLocaleString(currentLang === 'pt' ? 'pt-BR' : 'en-US');
+      }
+      
+      return (isNegative ? "-" : "") + formatted;
+    }
+    
+    function formatDate(rawDate) {
+      if (!rawDate) return TRANSLATIONS[currentLang].notDisclosed;
+      // Converte YYYY-MM-DD para DD/MM/YYYY ou MM/DD/YYYY
+      const parts = rawDate.split('-');
+      if (parts.length === 3) {
+        return currentLang === 'pt' 
+          ? `${parts[2]}/${parts[1]}/${parts[0]}` 
+          : `${parts[1]}/${parts[2]}/${parts[0]}`;
+      }
+      return rawDate;
+    }
+
+    // --- CÁLCULO DE MÉTRICAS (KPIs) ---
+    function calculateKPIs(arrivals, departures) {
+      const totalSpend = arrivals.reduce((acc, curr) => acc + (curr.fee || 0), 0);
+      const totalSales = departures.reduce((acc, curr) => acc + (curr.fee || 0), 0);
+      const netSpend = totalSales - totalSpend;
+      
+      // Atualiza valores textuais
+      kpiTotalSpend.textContent = formatMoney(totalSpend);
+      kpiTotalSales.textContent = formatMoney(totalSales);
+      kpiNetSpend.textContent = formatMoney(netSpend);
+      
+      metaArrivalsCount.textContent = `${arrivals.length} ${TRANSLATIONS[currentLang].signingsSuffix}`;
+      metaDeparturesCount.textContent = `${departures.length} ${TRANSLATIONS[currentLang].salesSuffix}`;
+      
+      // Estilização dinâmica condicional do Saldo Líquido (Net Spend)
+      kpiNetSpend.className = 'kpi-value'; // Reset
+      kpiNetSpendIcon.className = 'kpi-icon'; // Reset
+      kpiNetSpendCard.style.borderColor = 'var(--border-color)'; // Reset
+      
+      if (netSpend > 0) {
+        kpiNetSpend.classList.add('value-positive');
+        kpiNetSpendIcon.classList.add('icon-positive');
+        kpiNetSpendIcon.innerHTML = '<i class="fas fa-arrow-trend-up"></i>';
+        kpiNetSpendStatus.textContent = TRANSLATIONS[currentLang].netSpendStatusProfit;
+        kpiNetSpendCard.style.borderColor = 'rgba(5, 150, 105, 0.25)';
+      } else if (netSpend < 0) {
+        kpiNetSpend.classList.add('value-arrivals');
+        kpiNetSpendIcon.classList.add('icon-arrivals');
+        kpiNetSpendIcon.innerHTML = '<i class="fas fa-arrow-trend-down"></i>';
+        kpiNetSpendStatus.textContent = TRANSLATIONS[currentLang].netSpendStatusSpend;
+        kpiNetSpendCard.style.borderColor = 'rgba(37, 99, 235, 0.25)';
+      } else {
+        kpiNetSpend.classList.add('value-neutral');
+        kpiNetSpendIcon.classList.add('icon-neutral');
+        kpiNetSpendIcon.innerHTML = '<i class="fas fa-scale-balanced"></i>';
+        kpiNetSpendStatus.textContent = TRANSLATIONS[currentLang].netSpendStatusNeutral;
+      }
+      
+      // Gráfico de Proporção (Net Spend)
+      const totalVolume = totalSpend + totalSales;
+      if (totalVolume > 0) {
+        netSpendBarContainer.style.display = 'flex';
+        const spendPct = (totalSpend / totalVolume) * 100;
+        const salesPct = (totalSales / totalVolume) * 100;
+        
+        barFillSpend.style.width = spendPct + '%';
+        barFillSales.style.width = salesPct + '%';
+        
+        barFillSpend.title = `${currentLang === 'pt' ? 'Investimento' : 'Investment'}: ${spendPct.toFixed(1)}% (${formatMoney(totalSpend)})`;
+        barFillSales.title = `${currentLang === 'pt' ? 'Venda' : 'Sales'}: ${salesPct.toFixed(1)}% (${formatMoney(totalSales)})`;
+      } else {
+        netSpendBarContainer.style.display = 'none';
+      }
+    }
+
+    // --- ORDENAÇÃO DE ATLETAS ---
+    function sortList(list, sortBy) {
+      switch (sortBy) {
+        case 'price_desc':
+          list.sort((a, b) => (b.fee === null ? -1 : b.fee) - (a.fee === null ? -1 : a.fee));
+          break;
+        case 'price_asc':
+          list.sort((a, b) => {
+            const valA = a.fee === null ? Infinity : a.fee;
+            const valB = b.fee === null ? Infinity : b.fee;
+            return valA - valB;
+          });
+          break;
+        case 'name_asc':
+          list.sort((a, b) => a.playerName.localeCompare(b.playerName, 'pt-BR'));
+          break;
+        case 'name_desc':
+          list.sort((a, b) => b.playerName.localeCompare(a.playerName, 'pt-BR'));
+          break;
+        case 'market_value_desc':
+          list.sort((a, b) => (b.marketValue === null ? -1 : b.marketValue) - (a.marketValue === null ? -1 : a.marketValue));
+          break;
+      }
+    }
+
+    // --- NAVEGAÇÃO DE ABAS ---
+    function switchTab(tabName) {
+      if (currentTab === tabName) return;
+      
+      currentTab = tabName;
+      currentPage = 1;
+      
+      // Controla a classe ativa nos botões das abas
+      if (currentTab === 'arrivals') {
+        tabArrivalsBtn.classList.add('active');
+        tabDeparturesBtn.classList.remove('active');
+        document.getElementById('data-table').classList.remove('tab-btn-active-departures');
+      } else {
+        tabArrivalsBtn.classList.remove('active');
+        tabDeparturesBtn.classList.add('active');
+        document.getElementById('data-table').classList.add('tab-btn-active-departures');
+      }
+      
+      currentPage = 1;
+      updateDashboard();
+    }
+
+    // --- RENDERIZAÇÃO DA TABELA ---
+    function renderTable(list) {
+      tableBody.innerHTML = '';
+      
+      if (list.length === 0) {
+        // Exibe tela vazia
+        document.getElementById('data-table').style.display = 'none';
+        emptyState.classList.remove('hidden');
+        paginationFooter.style.display = 'none';
+        
+        emptyStateText.textContent = TRANSLATIONS[currentLang].emptyStateText;
+        return;
+      }
+      
+      // Oculta tela vazia e exibe tabela
+      document.getElementById('data-table').style.display = 'table';
+      emptyState.classList.add('hidden');
+      paginationFooter.style.display = 'flex';
+      
+      // Cálculo dos limites da paginação
+      const totalItems = list.length;
+      const totalPages = Math.ceil(totalItems / pageSize);
+      
+      if (currentPage > totalPages) currentPage = totalPages || 1;
+      
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, totalItems);
+      const pageSlice = list.slice(startIndex, endIndex);
+      
+      // Atualiza texto explicativo
+      const showingText = TRANSLATIONS[currentLang].paginationShowing
+        .replace('{start}', startIndex + 1)
+        .replace('{end}', endIndex)
+        .replace('{total}', totalItems);
+      paginationInfo.innerHTML = showingText;
+      
+      // Renderização das linhas
+      pageSlice.forEach(t => {
+        const tr = document.createElement('tr');
+        
+        const names = t.playerName.split(' ');
+        const initials = names.length > 1 ? (names[0][0] + names[names.length-1][0]).toUpperCase() : names[0].substring(0,2).toUpperCase();
+        
+        let feeBadgeClass = 'fee-badge paid';
+        if (t.fee === 0) feeBadgeClass = 'fee-badge free';
+        else if (t.fee === null) feeBadgeClass = 'fee-badge undisclosed';
+        
+        const fromClubHTML = (t.fromClubName && t.fromClubName !== 'Retired' && t.fromClubName !== 'Without Club') 
+          ? `<a class="club-interactive ${t.fromClubName === selectedClub ? 'club-current' : ''}" onclick="selectClub('${t.fromClubName.replace(/'/g, "\\'")}')"><i class="fas fa-shield-halved"></i> ${t.fromClubName}</a>`
+          : `<span style="color:var(--text-secondary)"><i class="fas fa-ban"></i> ${t.fromClubName || 'Não informado'}</span>`;
+          
+        const toClubHTML = (t.toClubName && t.toClubName !== 'Retired' && t.toClubName !== 'Without Club') 
+          ? `<a class="club-interactive ${t.toClubName === selectedClub ? 'club-current' : ''}" onclick="selectClub('${t.toClubName.replace(/'/g, "\\'")}')"><i class="fas fa-shield-halved"></i> ${t.toClubName}</a>`
+          : `<span style="color:var(--text-secondary)"><i class="fas fa-ban"></i> ${t.toClubName || 'Não informado'}</span>`;
+          
+        tr.innerHTML = `
+          <td>
+            <div class="player-profile-cell">
+              <div class="player-badge">${initials}</div>
+              <span class="player-name-text">${t.playerName}</span>
+            </div>
+          </td>
+          <td>${fromClubHTML}</td>
+          <td>${toClubHTML}</td>
+          <td><span class="date-text">${formatDate(t.date)}</span></td>
+          <td class="value-paid">${formatMoney(t.marketValue)}</td>
+          <td><span class="${feeBadgeClass}">${formatMoney(t.fee, true)}</span></td>
+        `;
+        
+        tableBody.appendChild(tr);
+      });
+      
+      renderPaginationButtons(totalPages);
+    }
+
+    function renderPaginationButtons(totalPages) {
+      paginationButtons.innerHTML = '';
+      
+      if (totalPages <= 1) return;
+      
+      const prevBtn = document.createElement('button');
+      prevBtn.className = 'page-btn';
+      prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+      prevBtn.disabled = currentPage === 1;
+      prevBtn.addEventListener('click', () => {
+        currentPage--;
+        renderActiveTable();
+      });
+      paginationButtons.appendChild(prevBtn);
+      
+      const range = 1;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - range && i <= currentPage + range)) {
+          const pageBtn = document.createElement('button');
+          pageBtn.className = `page-btn ${currentPage === i ? 'active' : ''}`;
+          pageBtn.textContent = i;
+          pageBtn.addEventListener('click', () => {
+            currentPage = i;
+            renderActiveTable();
+          });
+          paginationButtons.appendChild(pageBtn);
+        } else if (i === 2 || i === totalPages - 1) {
+          const dots = document.createElement('button');
+          dots.className = 'page-btn';
+          dots.textContent = '...';
+          dots.disabled = true;
+          paginationButtons.appendChild(dots);
+        }
+      }
+      
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'page-btn';
+      nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+      nextBtn.disabled = currentPage === totalPages;
+      nextBtn.addEventListener('click', () => {
+        currentPage++;
+        renderActiveTable();
+      });
+      paginationButtons.appendChild(nextBtn);
+    }
+
+    function renderActiveTable() {
+      applyFiltersAndRerender();
+    }
+  </script>
+</body>
+</html>
